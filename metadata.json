@@ -1,7 +1,7 @@
 {
-  "uuid": "kill-port@yourusername.github.com",
-  "name": "!!Kill Port",
-  "description": "Extension to easily kill processes on a specified port",
+  "uuid": "kill_ports@stasrusnak.github.com",
+  "name": "Kill Ports",
+  "description": "Extension to kill processes on a specified port",
   "shell-version": [
     "46"
   ],
