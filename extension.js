@@ -58,7 +58,6 @@ const KillPortIndicator = GObject.registerClass(
             if (!isNaN(port_number) && port_number > 0) {
                 const command = `fuser -k ${port}/tcp`;
                 const [ok, out, err, exit] = GLib.spawn_command_line_sync(command);
-
                 if (ok) {
                     Main.notify("Success", `Killed processes on port ${port_number}`);
                 } else {
