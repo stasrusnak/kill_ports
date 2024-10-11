@@ -29,11 +29,9 @@ const KillPortIndicator = GObject.registerClass(
                 style_class: 'square'
             });
             this.add_child(this.icon);
-            // Создание элемента меню
             this.menuItem = new PopupMenu.PopupMenuItem('Kill Processes', { reactive: false });
             this.menu.addMenuItem(this.menuItem);
 
-            // Создаем контейнер для ввода и кнопки
             this.box = new St.BoxLayout({ vertical: true });
             this.port_entry = new St.Entry({
                 style_class: "entry",
@@ -74,7 +72,7 @@ const KillPortIndicator = GObject.registerClass(
                     if (proc.get_successful()) {
                         Main.notify("Success", `Killed processes on port ${port_number}`);
                     } else {
-                        Main.notify("Error", `Failed to kill processes: ${stderr}`);
+                        Main.notify("Error", `Failed to kill: ${stderr}`);
                     }
                 } catch (error) {
                     Main.notify("Error", `An error occurred: ${error.message}`);
