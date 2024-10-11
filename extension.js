@@ -43,18 +43,18 @@ const KillPortIndicator = GObject.registerClass(
             this.port_entry.set_style("padding: 5px;");
             this.port_entry.add_style_class_name("kill-port-entry");
             this.box.add_child(this.port_entry);
-            // Создаем кнопку "Kill Processes"
+
             this.kill_button = new St.Button({
                 label: "Kill Processes",
                 style_class: "button"
             });
             this.kill_button.connect('clicked', () => this._kill_processes());
             this.box.add_child(this.kill_button);
+
             this.menuItem.add_child(this.box);
             this.menuItem.label.text = 'Kill Port';
         }
 
-        // Функция для убийства процессов
         async _kill_processes() {
             const port = this.port_entry.get_text().trim();
             const port_number = parseInt(port, 10);
@@ -63,30 +63,15 @@ const KillPortIndicator = GObject.registerClass(
                 const command = ['fuser', '-k', `${port}/tcp`];
 
                 try {
-                    // Создаем новый процесс с помощью Gio.Subprocess
                     const proc = new Gio.Subprocess({
                         argv: command,
                         flags: Gio.SubprocessFlags.STDOUT_PIPE | Gio.SubprocessFlags.STDERR_PIPE,
                     });
+                    const cancellable = new Gio.Cancellable();
+                    proc.init(cancellable);
 
-                    const cancellable = new Gio.Cancellable();  // Используем для отмены процесса
-                    proc.init(cancellable);  // Инициализация процесса
-
-                    // Ожидание завершения процесса
-                    const [stdout, stderr] = await new Promise((resolve, reject) => {
-                        proc.communicate_utf8_async('', cancellable, (proc, res) => {
-                            try {
-                                resolve(proc.communicate_utf8_finish(res));
-                            } catch (e) {
-                                reject(e);
-                            }
-                        });
-                    });
-
-                    // Проверка успешности выполнения команды
-                    const success = proc.get_successful(); // Проверяем успешность выполнения
-
-                    if (success) {
+                    const [stdout, stderr] = await proc.communicate_utf8_async(null, null);
+                    if (proc.get_successful()) {
                         Main.notify("Success", `Killed processes on port ${port_number}`);
                     } else {
                         Main.notify("Error", `Failed to kill processes: ${stderr}`);
@@ -98,7 +83,5 @@ const KillPortIndicator = GObject.registerClass(
                 Main.notify("Error", "Please enter a valid port number.");
             }
         }
-
-
     }
 );
