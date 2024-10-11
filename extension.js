@@ -1,6 +1,7 @@
 import GObject from 'gi://GObject';
 import St from 'gi://St';
 import GLib from 'gi://GLib';
+import Gio from 'gi://Gio';
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import { Extension } from 'resource:///org/gnome/shell/extensions/extension.js';
 import * as PanelMenu from 'resource:///org/gnome/shell/ui/panelMenu.js';
@@ -11,6 +12,7 @@ export default class KillPortIndicatorExtension extends Extension {
         this._indicator = new KillPortIndicator();
         Main.panel.addToStatusArea('kill-port', this._indicator);
     }
+
     disable() {
         if (this._indicator) {
             this._indicator.destroy();
@@ -30,6 +32,7 @@ const KillPortIndicator = GObject.registerClass(
             // Создание элемента меню
             this.menuItem = new PopupMenu.PopupMenuItem('Kill Processes', { reactive: false });
             this.menu.addMenuItem(this.menuItem);
+
             // Создаем контейнер для ввода и кнопки
             this.box = new St.BoxLayout({ vertical: true });
             this.port_entry = new St.Entry({
@@ -50,22 +53,52 @@ const KillPortIndicator = GObject.registerClass(
             this.menuItem.add_child(this.box);
             this.menuItem.label.text = 'Kill Port';
         }
+
         // Функция для убийства процессов
-        _kill_processes() {
+        async _kill_processes() {
             const port = this.port_entry.get_text().trim();
             const port_number = parseInt(port, 10);
 
             if (!isNaN(port_number) && port_number > 0) {
-                const command = `fuser -k ${port}/tcp`;
-                const [ok, out, err, exit] = GLib.spawn_command_line_sync(command);
-                if (ok) {
-                    Main.notify("Success", `Killed processes on port ${port_number}`);
-                } else {
-                    Main.notify("Error", `Failed to kill processes: ${err}`);
+                const command = ['fuser', '-k', `${port}/tcp`];
+
+                try {
+                    // Создаем новый процесс с помощью Gio.Subprocess
+                    const proc = new Gio.Subprocess({
+                        argv: command,
+                        flags: Gio.SubprocessFlags.STDOUT_PIPE | Gio.SubprocessFlags.STDERR_PIPE,
+                    });
+
+                    const cancellable = new Gio.Cancellable();  // Используем для отмены процесса
+                    proc.init(cancellable);  // Инициализация процесса
+
+                    // Ожидание завершения процесса
+                    const [stdout, stderr] = await new Promise((resolve, reject) => {
+                        proc.communicate_utf8_async('', cancellable, (proc, res) => {
+                            try {
+                                resolve(proc.communicate_utf8_finish(res));
+                            } catch (e) {
+                                reject(e);
+                            }
+                        });
+                    });
+
+                    // Проверка успешности выполнения команды
+                    const success = proc.get_successful(); // Проверяем успешность выполнения
+
+                    if (success) {
+                        Main.notify("Success", `Killed processes on port ${port_number}`);
+                    } else {
+                        Main.notify("Error", `Failed to kill processes: ${stderr}`);
+                    }
+                } catch (error) {
+                    Main.notify("Error", `An error occurred: ${error.message}`);
                 }
             } else {
                 Main.notify("Error", "Please enter a valid port number.");
             }
         }
+
+
     }
 );
