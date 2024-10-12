@@ -2,5 +2,50 @@
     background-image: url("icons/square.svg");
     background-size: 22px;
     height: 22px;
-    width: 22px; 
+    width: 22px;
+}
+
+.kill-port-label {
+    font-size: 14px;
+    font-weight: bold;
+    color: #d8dee9;
+    margin-bottom: 10px;
+}
+
+.kill-port-box {
+    padding: 10px;
+    background-color: #2e3440;
+    border-radius: 5px;
+}
+
+.kill-port-vbox {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+}
+
+.kill-port-entry {
+    padding: 5px;
+    border: 1px solid #4c566a;
+    border-radius: 3px;
+    color: #d8dee9;
+    background-color: #3b4252;
+}
+
+.kill-port-button {
+    padding: 5px 10px;
+    background-color: #5e81ac;
+    color: #eceff4;
+    border: none;
+    border-radius: 3px;
+    cursor: pointer;
+}
+
+.kill-port-button:hover {
+    background-color: #81a1c1;
+}
+
+.spacer {
+    height: 10px;
 }

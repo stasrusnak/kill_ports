@@ -24,60 +24,101 @@ const KillPortIndicator = GObject.registerClass(
     class KillPortIndicator extends PanelMenu.Button {
         _init() {
             super._init(0, "Kill Port", false);
+
             this.icon = new St.Icon({
                 style_class: 'square'
             });
             this.add_child(this.icon);
-            this.menuItem = new PopupMenu.PopupMenuItem('Kill Processes', { reactive: false });
+
+            this.menuItem = new PopupMenu.PopupMenuItem('', { reactive: false });
             this.menu.addMenuItem(this.menuItem);
 
-            this.box = new St.BoxLayout({ vertical: true });
-            this.port_entry = new St.Entry({
-                style_class: "entry",
-                text: "",
-                can_focus: true
+            this.vbox = new St.BoxLayout({ vertical: true, style_class: 'kill-port-vbox', x_expand: true });
+
+            this.label = new St.Label({
+                text: 'Kill Port',
+                style_class: 'kill-port-label',
+                x_expand: true
             });
-            this.port_entry.set_style("padding: 5px;");
-            this.port_entry.add_style_class_name("kill-port-entry");
-            this.box.add_child(this.port_entry);
+            this.vbox.add_child(this.label);
+
+            this.port_entry = new St.Entry({
+                style_class: "kill-port-entry",
+                text: "",
+                can_focus: true,
+                x_expand: true
+            });
+            this.vbox.add_child(this.port_entry);
+
+            let spacer = new St.Widget({ style_class: 'spacer', x_expand: true });
+            this.vbox.add_child(spacer);
 
             this.kill_button = new St.Button({
                 label: "Kill Processes",
-                style_class: "button"
+                style_class: "kill-port-button",
+                x_expand: true
             });
             this.kill_button.connect('clicked', () => this._kill_processes());
-            this.box.add_child(this.kill_button);
+            this.vbox.add_child(this.kill_button);
 
-            this.menuItem.add_child(this.box);
-            this.menuItem.label.text = 'Kill Port';
+            this.menuItem.add_child(this.vbox);
         }
 
-        async _kill_processes() {
+        async _kill_processes(input = null, cancellable = null) {
             const port = this.port_entry.get_text().trim();
             const port_number = parseInt(port, 10);
 
-            if (!isNaN(port_number) && port_number > 0) {
-                const command = ['fuser', '-k', `${port}/tcp`];
+            if (isNaN(port_number) || port_number <= 0) {
+                Main.notify("Error", "Please enter a valid port number.");
+                return;
+            }
 
-                try {
-                    const proc = new Gio.Subprocess({
-                        argv: command,
-                        flags: Gio.SubprocessFlags.STDOUT_PIPE | Gio.SubprocessFlags.STDERR_PIPE,
-                    });
-                    const cancellable = new Gio.Cancellable();
-                    proc.init(cancellable);
+            const checkPortCommand = ['lsof', '-i', `:${port}`];
+            const killCommand = ['fuser', '-k', `${port}/tcp`];
 
-                    const [stdout, stderr] = await proc.communicate_utf8_async(null, null);
-                    if (proc.get_successful()) {
+            try {
+                const isPortActive = await this._execute_command(checkPortCommand, input, cancellable);
+                if (isPortActive.success) {
+                    const killResult = await this._execute_command(killCommand, input, cancellable);
+                    if (killResult.success) {
                         Main.notify("Success", `Killed processes on port ${port_number}`);
                     } else {
-                        Main.notify("Error", `Failed to kill: ${stderr}`);
+                        Main.notify("Error", `Failed to kill: ${killResult.stderr}`);
                     }
-                } catch (error) {
-                    Main.notify("Error", `An error occurred: ${error.message}`);
+                } else {
+                    Main.notify("Error", `Port ${port_number} is not active.`);
                 }
-            } else {
-                Main.notify("Error", "Please enter a valid port number.");
+            } catch (error) {
+                Main.notify("Error", `An error occurred: ${error.message}`);
+            }
+        }
+
+        async _execute_command(command, input, cancellable) {
+            const proc = new Gio.Subprocess({
+                argv: command,
+                flags: Gio.SubprocessFlags.STDOUT_PIPE | Gio.SubprocessFlags.STDERR_PIPE,
+            });
+            proc.init(cancellable);
+
+            try {
+                const [stdout, stderr] = await new Promise((resolve, reject) => {
+                    proc.communicate_utf8_async(input, cancellable, (proc, res) => {
+                        try {
+                            const result = proc.communicate_utf8_finish(res);
+                            resolve(result);
+                        } catch (error) {
+                            reject(error);
+                        }
+                    });
+                });
+
+                return {
+                    success: proc.get_successful(),
+                    stdout: String(stdout).trim(),
+                    stderr: String(stderr).trim()
+                };
+            } catch (error) {
+                throw new Error(`Command execution failed: ${error.message}`);
             }
         }
     }

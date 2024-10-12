@@ -4,7 +4,8 @@
   "description": "Extension to kill processes on a specified port",
   "url": "https://github.com/stasrusnak/kill_ports",
   "shell-version": [
-    "46"
+    "46",
+    "47"
   ],
-  "version": 2
+  "version": 2.1
 }
